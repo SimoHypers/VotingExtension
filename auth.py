@@ -57,7 +57,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     if not user_doc.exists or not verify_password(form_data.password, user_doc.to_dict()["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    # Generate a new token
     access_token = create_access_token({"sub": form_data.username}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    
+    # Store the token in Firestore
+    user_ref.update({"access_token": access_token})
+
     return {"access_token": access_token, "token_type": "bearer"}
 
 # Get current user from token
@@ -81,6 +86,36 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
+
+@router.post("/validate-token")
+def validate_token(client_token: str):
+    try:
+        # Decode the client's token
+        payload = jwt.decode(client_token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        # Retrieve the user's stored token (assuming Firestore stores it)
+        user_ref = db.collection("users").document(username)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            raise HTTPException(status_code=401, detail="User not found")
+
+        stored_token = user_doc.to_dict().get("access_token")
+
+        if stored_token != client_token:
+            raise HTTPException(status_code=401, detail="Token mismatch")
+
+        return {"detail": "Token is valid"}
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+
 
 # Protected route
 @router.get("/profile")
