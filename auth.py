@@ -1,6 +1,6 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
@@ -46,7 +46,7 @@ def signup(username: str, email: str, password: str):
     hashed_pw = hash_password(password)
     user_ref.set({"email": email, "hashed_password": hashed_pw})
 
-    return {"message": "User created successfully"}
+    return {"detail": "User created successfully"}
 
 # User login route
 @router.post("/login")
