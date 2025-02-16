@@ -1,1 +1,5 @@
-pip install fastapi firebase-admin uvicorn
+# Installation
+
+```
+pip install fastapi firebase-admin uvicorn passlib
+```
